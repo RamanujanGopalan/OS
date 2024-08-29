@@ -57,21 +57,23 @@ void load_and_run_elf(char** exe) {
 
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
+  int (*_start)(void) = (int (*)(void)) ehdr;
   // 6. Call the "_start" method and print the value returned from the "_start"
-  // int result = _start();
-  // printf("User _start return value = %d\n",result);
+  
+  int result = _start();
+  printf("User _start return value = %d\n",result);
 }
 
 // From Launch.c
-int main(int argc, char** argv) 
-{
-  // if(argc != 2) {
-  //   printf("Usage: %s <ELF Executable> \n",argv[0]);
-  //   exit(1);
-  // }
-  // 1. carry out necessary checks on the input ELF file
-  // 2. passing it to the loader for carrying out the loading/execution
-  load_and_run_elf(*argv[1]);
-  // 3. invoke the cleanup routine inside the loader
-  return 0;
-}
+// int main(int argc, char** argv) 
+// {
+//   // if(argc != 2) {
+//   //   printf("Usage: %s <ELF Executable> \n",argv[0]);
+//   //   exit(1);
+//   // }
+//   // 1. carry out necessary checks on the input ELF file
+//   // 2. passing it to the loader for carrying out the loading/execution
+//   load_and_run_elf(*argv[1]);
+//   // 3. invoke the cleanup routine inside the loader
+//   return 0;
+// }
