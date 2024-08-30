@@ -8,11 +8,8 @@ int fd;
  * release memory and other cleanups
  */
 void loader_cleanup() {
-  printf("GHJ\n");
   if(ehdr!=NULL){free(ehdr);}
-  printf("JHBFD\n");
-  if(fd>=0){free(fd);}
-  printf("JBKFB\n");
+  if(phdr!=NULL){free(phdr);}
 }
 
 /*
