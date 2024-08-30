@@ -14,7 +14,7 @@ void loader_cleanup() {
 /*
  * Load and run the ELF executable file
  */
-void load_and_run_elf(char** exe) {
+
 void load_and_run_elf(char** exe) {
   fd = open(exe, O_RDONLY);
   // 1. Load entire binary content into the memory from the ELF file.
@@ -47,14 +47,25 @@ void load_and_run_elf(char** exe) {
       break;
     }
   }
+  
+  int realoff=entry-Phdr.p_offset;
+  
   // 3. Allocate memory of the size "p_memsz" using mmap function
   //    and then copy the segment content
   void* virtualmem=mmap(NULL,Phdr.p_memsz,PROT_READ|PROT_EXEC|PROT_WRITE,MAP_ANONYMOUS|MAP_PRIVATE,0,0);
+  
+  lseek(fd, phdr.p_offset, SEEK_SET);
+
+  if (read(fd, &virtual_mem, memsz) != memsz){
+    printf("ERROR");
+      exit(1);
+  }
+  
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
-  int realoff=entry-Phdr.p_offset;
   void* real_entry=realoff+virtualmem;
+  
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
-  int (*_start)(void) = (int (*)(void)) ehdr;
+  int (*_start)(void) = (int (*)(void)) entry_point;
   // 6. Call the "_start" method and print the value returned from the "_start"
   
   int result = _start();
