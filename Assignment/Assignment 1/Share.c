@@ -15,47 +15,44 @@ void loader_cleanup() {
  * Load and run the ELF executable file
  */
 void load_and_run_elf(char** exe) {
+void load_and_run_elf(char** exe) {
   fd = open(exe, O_RDONLY);
   // 1. Load entire binary content into the memory from the ELF file.
-
-  // Entire Binary Content Loaded
-  if (fd<0){
+  if(fd<0){
     printf("ERROR");
     exit(1);
   }
-  // if(fd>=0){
-  //   off_t filesize=lseek(fd,0,SEEK_END);
-  //   char* buf=(char*)malloc(filesize);
-  //   long long sz;
-  //   sz=read(fd,buf,filesize);
-  //   printf("Those bytes are as follows: %s\n", buf);
-  // }
-
-  Elf32_Ehdr* ehdr = (Elf32_Ehdr*)fd;
-  Elf32_Phdr* phEntry = ehdr + ehdr->e_phoff;
-
-  unsigned int entry = ehdr->e_entry;
-
-  unsigned short phSize = ehdr->e_phentsize;
-  unsigned short phNum = ehdr->e_phnum;
-
-
-  // 2. Iterate through the PHDR table and find the section of PT_LOAD type that contains the address of the entrypoint method in fib.c
-  Elf32_Phdr* phPointer = phEntry;
-  
-  for (int i = 0; i<phNum; i++){
-    if (phPointer->p_type == 1){
-      if (phPointer->p_vaddr<=entry && phPointer->p_vaddr+phSize>entry){
-        break;
-      }
-    }
-    phPointer+=phSize;
+  Elf32_Ehdr ehdr;
+  if(read(fd,&ehdr,sizeof(ehdr))!=sizeof(ehdr)){
+    printf("ERROR");
+    exit(1);
   }
+  // 2. Iterate through the PHDR table and find the section of PT_LOAD type that contains the address of the entrypoint method in fib.c
+  unsigned int phoff=ehdr.e_phoff;
+  unsigned short phentsize=ehdr.e_phentsize;
+  unsigned int phnum=ehdr.e_phnum;
+  unsigned int entry=ehdr.e_entry;
+  Elf32_Phdr Phdr;
 
-  // 3. Allocate memory of the size "p_memsz" using mmap function and then copy the segment content
-  void* virtual_mem = mmap(NULL, phPointer->p_memsz, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE, 0, 0);
-
+  for(int i=0;i<phnum;i++){
+    lseek(fd,phoff+phentsize*i,SEEK_SET);
+    if(read(fd,&Phdr,sizeof(Phdr))!=sizeof(Phdr)){
+      printf("ERROR");
+      exit(1);
+    }
+    if(Phdr.p_type!=1){
+      continue;
+    }
+    else if(Phdr.p_vaddr<=entry && Phdr.p_vaddr+Phdr.p_memsz>=entry){
+      break;
+    }
+  }
+  // 3. Allocate memory of the size "p_memsz" using mmap function
+  //    and then copy the segment content
+  void* virtualmem=mmap(NULL,Phdr.p_memsz,PROT_READ|PROT_EXEC|PROT_WRITE,MAP_ANONYMOUS|MAP_PRIVATE,0,0);
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
+  int realoff=entry-Phdr.p_offset;
+  void* real_entry=realoff+virtualmem;
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
   int (*_start)(void) = (int (*)(void)) ehdr;
   // 6. Call the "_start" method and print the value returned from the "_start"
