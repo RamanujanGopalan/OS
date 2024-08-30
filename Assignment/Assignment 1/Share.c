@@ -52,36 +52,22 @@ void load_and_run_elf(char** exe) {
   
   // 3. Allocate memory of the size "p_memsz" using mmap function
   //    and then copy the segment content
-  void* virtualmem=mmap(NULL,Phdr.p_memsz,PROT_READ|PROT_EXEC|PROT_WRITE,MAP_ANONYMOUS|MAP_PRIVATE,0,0);
+  void* virtualmem=mmap(NULL,Phdr.p_memsz,PROT_READ|PROT_EXEC|PROT_WRITE,MAP_PRIVATE,0,0);
   
-  lseek(fd, phdr.p_offset, SEEK_SET);
+  lseek(fd, Phdr.p_offset, SEEK_SET);
 
-  if (read(fd, &virtual_mem, memsz) != memsz){
+  if (read(fd, &virtualmem, Phdr.p_memsz) != Phdr.p_memsz){
     printf("ERROR");
-      exit(1);
+    exit(1);
   }
   
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
   void* real_entry=realoff+virtualmem;
   
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
-  int (*_start)(void) = (int (*)(void)) entry_point;
+  int (*_start)(void) = (int (*)(void)) real_entry;
   // 6. Call the "_start" method and print the value returned from the "_start"
   
   int result = _start();
   printf("User _start return value = %d\n",result);
 }
-
-// From Launch.c
-// int main(int argc, char** argv) 
-// {
-//   // if(argc != 2) {
-//   //   printf("Usage: %s <ELF Executable> \n",argv[0]);
-//   //   exit(1);
-//   // }
-//   // 1. carry out necessary checks on the input ELF file
-//   // 2. passing it to the loader for carrying out the loading/execution
-//   load_and_run_elf(*argv[1]);
-//   // 3. invoke the cleanup routine inside the loader
-//   return 0;
-// }
