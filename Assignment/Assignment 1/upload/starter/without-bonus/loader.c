@@ -10,6 +10,7 @@ int fd;
 void loader_cleanup() {
   if(ehdr!=NULL){free(ehdr);}
   if(phdr!=NULL){free(phdr);}
+  if(fd>=0){close(fd);}
 }
 
 /*
