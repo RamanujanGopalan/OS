@@ -18,17 +18,17 @@ void loader_cleanup() {
  */
 void load_and_run_elf(char** exe) {
 
-  fd = open(exe, O_RDONLY);
+  fd = open(exe[1], O_RDONLY);
 
   // 1. Load entire binary content into the memory from the ELF file.
   if(fd<0){
-    printf("ERROR 1\n");
+    printf("ERROR\n");
     exit(1);
   }
 
   ehdr=(Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
   if(read(fd,ehdr,sizeof(Elf32_Ehdr))!=sizeof(Elf32_Ehdr)){
-    printf("ERROR 2\n");
+    printf("ERROR\n");
     exit(1);
   }
 
@@ -43,7 +43,7 @@ void load_and_run_elf(char** exe) {
   for(int i=0;i<phnum;i++){
     lseek(fd,phoff+phentsize*i,SEEK_SET);
     if(read(fd,phdr,sizeof(Elf32_Phdr))!=sizeof(Elf32_Phdr)){
-      printf("ERROR 3\n");
+      printf("ERROR\n");
       exit(1);
     }
     if(phdr->p_type!=1){
@@ -54,8 +54,9 @@ void load_and_run_elf(char** exe) {
       break;
     }
   }
+  
   if(!flag){
-    printf("ERROR 4\n");
+    printf("ERROR\n");
     exit(1);
   }
   int realoff=entry-phdr->p_vaddr;
@@ -66,7 +67,7 @@ void load_and_run_elf(char** exe) {
   lseek(fd, phdr->p_offset, SEEK_SET);
 
   if (read(fd, virtual_mem, phdr->p_memsz) != phdr->p_memsz){
-    perror("ERROR 5\n");
+    perror("ERROR\n");
     exit(1);
   }
 
@@ -90,7 +91,7 @@ int main(int argc, char** argv)
   }
   // 1. carry out necessary checks on the input ELF file
   // 2. passing it to the loader for carrying out the loading/execution
-  load_and_run_elf(argv[1]);
+  load_and_run_elf(argv);
   // 3. invoke the cleanup routine inside the loader  
   loader_cleanup();
   return 0;
