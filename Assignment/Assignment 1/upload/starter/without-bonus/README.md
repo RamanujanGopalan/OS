@@ -5,7 +5,7 @@ Varun Golcha(2023584)
 Given an ELF executable file we had to load the file onto the physical memory and execute it
 
 load_and_run_elf():
-  1)Firstly we created a filedescriptor using which we opened the exe file of fib.
+  1)Firstly we created a filedescriptor using which we opened the exe file of fib.\n
   2)Using the opened file we read the contents of elf header into ehdr.
   3)From the ehdr we read program header offset,number of program headers and phentsize and the enrty point.
   4)Using lseek we navigated to the phoff set and iterated through it to find a load type.
