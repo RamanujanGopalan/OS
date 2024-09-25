@@ -99,19 +99,41 @@ int create_process(char* command) {
         char *s = (char *)malloc(100 * sizeof(char));
         int h = 0;
         int pipe_pos[50];
-        int i = 0;
 
         //PARSING
-        int wspace_flag = 0;
+        // int i = 0;
+        // char* token = strtok(command, " ");
+        // while (token != NULL) {
+        //     if (*token == '|'){
+        //         pipe_pos[pipes]=count;
+        //         pipes++;
+        //     }
+        //     printf("%s\n", token);
+        //     if (strcmp(token[strlen(token)-1], "\n") == 0){
+        //         printf("%d fivoh\n", 1);
+        //         token[strlen(token)-1] = '\0';
+        //     }
+        //     printf("hdkjsgbk%d\n", 1);
+        //     printf("%s\n", token);
+        //     tempargs[count++] = token;
+        //     token = strtok(NULL, " ");
+        // }
+
+        int ws_flag = 0;
+
         for(int i = 0; i <= strlen(command); i++) {
             if (command[i] == ' ' || command[i] == '|' || command[i] == '\0') {
-                s[h] = '\0';
-                tempargs[count] = strdup(s);
-                count++;
-                h = 0;
+                if (ws_flag == 1){
+                    s[h] = '\0';
+                    tempargs[count] = strdup(s);
+                    count++;
+                    h = 0;
+                    ws_flag = 0;
+                }
                 if (command[i] == '|') {
                     pipe_pos[pipes]=count;
                     pipes++;
+                    ws_flag = 0;
                 }
             }
             else if (command[i] == '\n') {
@@ -120,6 +142,7 @@ int create_process(char* command) {
             else {
                 s[h] = command[i];
                 h++;
+                ws_flag = 1;
             }
         }
         tempargs[count] = NULL;
