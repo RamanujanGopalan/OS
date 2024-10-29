@@ -160,3 +160,173 @@ void display(Queue *q) {
 int size(Queue *q){
     return q->size;
 }
+
+Queue completed;
+
+void my_handler(int signo) {
+    if (signo == SIGINT) {
+        printf("\nCaught SIGINT (Ctrl+C). Terminating the program.\n");
+        int size3 = size(&completed);
+        while(size3 > 0) {
+            Process* tmp = dequeue(&completed);
+            printf("Command: ");
+            for (int i = 0; tmp->command[i] != NULL; i++) {
+                printf("%s ", tmp->command[i]);
+            }
+            printf("\n\tPID: %d\n", tmp->pid);
+            printf("\tCompletion Time: %ld seconds\n", tmp->completion_time.tv_sec-prog_start.tv_sec-4); //<- Display completion time in seconds
+            printf("\tWait Time: %.2lf seconds\n", tmp->wait_time); //<- Display wait time in seconds
+            size3--;
+        }
+        exit(0);
+    }
+}
+
+
+int main(int args, char* argv[]) {
+
+    clock_gettime(CLOCK_REALTIME, &prog_start);
+
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = my_handler;
+    sigemptyset(&sa.sa_mask); 
+    sa.sa_flags = 0;
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Scheduler Launched with %d cpus and %d time quanta\n", atoi(argv[1]), atoi(argv[2]));
+
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+
+    Queue q;
+    queue(&q);
+    
+    Queue running;
+    queue(&running);
+
+    queue(&completed);
+
+    // int count = 0;
+
+    while (1)
+    {
+        // if (count++%1000000000 != 0){
+        //     continue;
+        // }
+        char command[100];
+        ssize_t bytes_read = read(STDIN_FILENO, command, sizeof(command));
+        // printf("ASDFGH\n");
+        // printf("BYTES READ %d == %d \n", bytes_read, sizeof(Process*));
+
+        if (bytes_read == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            // "No data written yet. Doing something else...
+            // char buff[] = "No data Written\n";
+            // write(STDOUT_FILENO, buff, sizeof(buff));
+            // printf("asdfg\n");
+
+            if (size(&q) == 0 && size(&running) == 0){
+                raise(SIGSTOP);
+                continue;
+            }
+
+            // printf("Varun chomu\n");
+
+            int size1=size(&q);
+            int min1 = min(atoi(argv[1]),size1);
+            int size2 = 0;
+            // printf("Queue size = %d\n", size1);
+            display(&q);
+
+            for(int i=0;i<min1;i++){
+                Process* p = dequeue(&q);
+
+                struct timespec now;
+                clock_gettime(CLOCK_REALTIME, &now);
+                p->wait_time += (now.tv_sec - p->eq_time.tv_sec);  //<- Update accumulated wait time
+
+                size1--;
+                // printf("dequeued pid %d\n", p->pid);
+                if (p->pid == -1){
+                    pid_t pid = fork();
+                    if (pid == 0){
+                        //Child
+                        // for (int i = 0; p->command[i] != NULL; i++) {
+                        //     printf("arg[%d]: %s\n", i, p->command[i]);
+                        // }
+                        // printf("CREATED EXECVP CHILD %s\n", p->command[0]);
+                        execvp(p->command[0],p->command);
+                        perror("DIKKAT\n");
+                        exit(0);
+                    }
+                    else if (pid > 0){
+                        //Parent
+                        // wait(NULL);
+                        p->pid=pid;
+                    }
+                }
+                else if(p->pid!=-1){
+                    kill(p->pid,SIGCONT);
+                }
+                // printf("%d %s equeued 1\n", p->pid,p->command[0]);
+                enqueue(&running,p);
+                size2++;
+            }
+
+            // printf("SLLEPING\n");
+            sleep(atoi(argv[2]));
+
+            size2=size(&running);
+            int min2 = min(atoi(argv[1]),size2);
+            for(int j=0;j<min2;j++){
+                int status;
+                Process *p=dequeue(&running);
+                clock_gettime(CLOCK_REALTIME, &p->dq_time);
+                size2--;
+                pid_t result = waitpid(p->pid, &status, WNOHANG);
+                // printf("%d %s result = %d\n", p->pid,p->command[0], result);
+                if(result==0){
+                    kill(p->pid,SIGSTOP);
+                    // printf("%d %s equeued 2\n", p->pid,p->command[0]);
+                    enqueue(&q,p);
+                    size1++;
+                    // printf("KILLED AND ENQUEUED\n");
+                }
+                else if(result==p->pid){
+                    clock_gettime(CLOCK_REALTIME, &p->completion_time);
+                    enqueue(&completed, p);
+                    // printf("Compeleted pid %d\n", p->pid);
+                    p->completed = 1;
+                    // continue;
+                }
+                else if (result == -1){
+                    // printf("completed %d\n", p->completed);
+                    if (p->completed != 1){
+                        p->completed = 1;
+                        // printf("%d %s equeued 3\n", p->pid,p->command[0]);
+                        enqueue(&q,p);
+                        size1++;
+                    }
+                }
+            }
+        }
+
+        else if (bytes_read == -1) {
+            perror("Error in reading");
+            exit(EXIT_FAILURE);
+        }
+
+        else{
+            // printf("ASDFGHJ\n");
+            // Data received, handle it
+            // printf("%d\n", bytes_read);
+            // printf("READ %s\n", command);
+            enqueue_new(&q, command);
+        }
+    }
+
+    return 0;
+}
