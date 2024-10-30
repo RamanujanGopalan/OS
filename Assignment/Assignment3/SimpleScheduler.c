@@ -285,7 +285,7 @@ int main(int args, char* argv[]) {
             }
 
             // printf("SLLEPING\n");
-            usleep(atoi(argv[2]));
+            usleep(atoi(argv[2])*1000);
 
             size2=size(&running);
             int min2 = min(atoi(argv[1]),size2);
