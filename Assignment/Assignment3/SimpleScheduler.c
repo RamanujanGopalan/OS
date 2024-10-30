@@ -37,6 +37,8 @@ typedef struct {
     int size;
 } Queue;
 
+Queue completed;
+
 void queue(Queue *q) {
     q->first = NULL;
     q->last = NULL;
@@ -45,6 +47,19 @@ void queue(Queue *q) {
 
 int empty(Queue *q) {
     return q->first == NULL;
+}
+
+void enqueue(Queue* q, Process* p) {
+    clock_gettime(CLOCK_REALTIME, &p->eq_time);
+    p->next = NULL;
+    if (empty(q)) {
+        q->first = p;
+        q->last = p;
+    } else {
+        q->last->next = p;
+        q->last = p;
+    }
+    q->size++;
 }
 
 void enqueue_new(Queue *q, char *command) {
@@ -94,6 +109,8 @@ void enqueue_new(Queue *q, char *command) {
     tempargs[count] = NULL;
     free(s);
 
+    
+
     // printf(tempargs[1]);
 
     int cnt = 1;
@@ -101,9 +118,12 @@ void enqueue_new(Queue *q, char *command) {
         new_p->command[cnt-1] = tempargs[cnt];
         cnt++;
     }
-    printf("\n");
     new_p->command[cnt] = NULL;
 
+    if(strcmp(tempargs[0],"submit")){
+        printf("COMMAND SHOULD START WITH submit\n");
+        return;
+    }
 
     if (empty(q)) {
         q->first = new_p;
@@ -111,19 +131,6 @@ void enqueue_new(Queue *q, char *command) {
     } else {
         q->last->next = new_p;
         q->last = new_p;
-    }
-    q->size++;
-}
-
-void enqueue(Queue* q, Process* p) {
-    clock_gettime(CLOCK_REALTIME, &p->eq_time);
-    p->next = NULL;
-    if (empty(q)) {
-        q->first = p;
-        q->last = p;
-    } else {
-        q->last->next = p;
-        q->last = p;
     }
     q->size++;
 }
@@ -161,11 +168,9 @@ int size(Queue *q){
     return q->size;
 }
 
-Queue completed;
-
 void my_handler(int signo) {
     if (signo == SIGINT) {
-        printf("\nCaught SIGINT (Ctrl+C). Terminating the program.\n");
+        printf("\nCaught SIGINT (Ctrl+C). Terminating the program .\n");
         int size3 = size(&completed);
         while(size3 > 0) {
             Process* tmp = dequeue(&completed);
@@ -174,8 +179,8 @@ void my_handler(int signo) {
                 printf("%s ", tmp->command[i]);
             }
             printf("\n\tPID: %d\n", tmp->pid);
-            printf("\tCompletion Time: %ld seconds\n", tmp->completion_time.tv_sec-prog_start.tv_sec-4); //<- Display completion time in seconds
-            printf("\tWait Time: %.2lf seconds\n", tmp->wait_time); //<- Display wait time in seconds
+            printf("\tCompletion Time: %ld seconds\n", tmp->completion_time.tv_sec-prog_start.tv_sec-4);
+            printf("\tWait Time: %.2lf seconds\n", tmp->wait_time);
             size3--;
         }
         exit(0);
@@ -228,6 +233,7 @@ int main(int args, char* argv[]) {
             // write(STDOUT_FILENO, buff, sizeof(buff));
             // printf("asdfg\n");
 
+            // printf("Queue size %d\n", size(&q));
             if (size(&q) == 0 && size(&running) == 0){
                 raise(SIGSTOP);
                 continue;
@@ -239,9 +245,10 @@ int main(int args, char* argv[]) {
             int min1 = min(atoi(argv[1]),size1);
             int size2 = 0;
             // printf("Queue size = %d\n", size1);
-            display(&q);
+            // display(&q);
 
             for(int i=0;i<min1;i++){
+                // print("IN FOR");
                 Process* p = dequeue(&q);
 
                 struct timespec now;
@@ -259,12 +266,13 @@ int main(int args, char* argv[]) {
                         // }
                         // printf("CREATED EXECVP CHILD %s\n", p->command[0]);
                         execvp(p->command[0],p->command);
-                        perror("DIKKAT\n");
-                        exit(0);
+                        perror("execvp failed\n");
+                        exit(-5);
                     }
                     else if (pid > 0){
                         //Parent
                         // wait(NULL);
+                        
                         p->pid=pid;
                     }
                 }
