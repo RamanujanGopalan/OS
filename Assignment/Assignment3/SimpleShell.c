@@ -23,7 +23,6 @@ void my_handler(int signo) {
         printf("\nCaught SIGINT (Ctrl+C) in parent. Terminating the program.\n");
         kill(scheduler, SIGCONT);
         kill(scheduler, SIGINT);
-        complete_history();
         exit(0);
     }
 }
