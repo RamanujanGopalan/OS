@@ -71,6 +71,7 @@ void my_handler(int signo, siginfo_t *info, void *context) {
         }
     }
 }
+
 void load_and_run_elf(char** exe) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
