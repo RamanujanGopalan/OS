@@ -2,8 +2,9 @@
 
 Elf32_Ehdr *ehdr = NULL;  
 Elf32_Phdr *phdr = NULL; 
+void* mapped_pages[50];
 int fd = -1;             
-int count = 0;           
+int page_count = 0;           
 int fragmentation = 0; 
 
 void loader_cleanup() {
@@ -19,6 +20,10 @@ void loader_cleanup() {
         close(fd);
         fd = -1;
     }
+
+    for (int i = 0; i<page_count; i++){
+        munmap(mapped_pages[i], 4096);
+    }
 }
 void my_handler(int signo, siginfo_t *info, void *context) {
     if (signo == SIGSEGV) {
@@ -27,44 +32,31 @@ void my_handler(int signo, siginfo_t *info, void *context) {
             if (phdr[i].p_type == 1){
                 if (seg_address >= phdr[i].p_vaddr && seg_address < phdr[i].p_vaddr + phdr[i].p_memsz) {
 
-                    printf("v adrs %d to %d TYPE %d\n", phdr[i].p_vaddr, phdr[i].p_vaddr+phdr[i].p_memsz, phdr[i].p_type);
-                    printf("seg adrs %d\n", seg_address);
-
-                    off_t file_size = lseek(fd, 0, SEEK_END);
-                    if (file_size == -1) {
-                        perror("lseek failed to determine file size");
-                        exit(EXIT_FAILURE);
-                    }
-
-                    printf("FILE SZ %d\n", file_size);
-
                     int page_num = (seg_address - phdr[i].p_vaddr) / 4096;
-                    int page_start = page_num * 4096;
                     void *page = mmap((void *)(phdr[i].p_vaddr + page_num * 4096), 4096,
                                     PROT_READ | PROT_WRITE | PROT_EXEC,
-                                    MAP_PRIVATE | MAP_FIXED |MAP_ANONYMOUS, -1, 0);
+                                    MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     if (page == MAP_FAILED) {
                         perror("mmap failed for page");
                         exit(EXIT_FAILURE);
                     }
 
-                    count++;
+                    mapped_pages[page_count] = page;
+
+                    page_count++;
                     int to_read = 4096;
                     if (phdr[i].p_vaddr + phdr[i].p_memsz - seg_address < 4096){
                         to_read = phdr[i].p_vaddr + phdr[i].p_memsz - seg_address;
                         fragmentation += 4096-to_read;
                     }
 
-                    printf("Page %d = %d\n", page_num,  phdr[i].p_offset);
                     lseek(fd, phdr[i].p_offset + page_num * 4096, SEEK_SET);
                     int bytes_read = read(fd, page, to_read);
-                    printf("READ %d == %d\n", bytes_read, to_read);
 
                     if (bytes_read == -1) {
                         perror("Error reading segment page");
                         exit(EXIT_FAILURE);
                     }
-                    
                     break;
                 }
             }
@@ -113,7 +105,7 @@ int main(int argc, char** argv) {
     }
     load_and_run_elf(argv);
     loader_cleanup();
-    printf("Count = %d\n", count);
+    printf("page_count = %d\n", page_count);
     printf("Fragmentation = %d\n", fragmentation);
 
     return 0;
