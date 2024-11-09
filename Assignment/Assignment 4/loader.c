@@ -105,8 +105,10 @@ int main(int argc, char** argv) {
     }
     load_and_run_elf(argv);
     loader_cleanup();
-    printf("page_count = %d\n", page_count);
-    printf("Fragmentation = %d\n", fragmentation);
+    printf("No of page faults = %d\n", page_count);
+    printf("No of pages allocated = %d\n", page_count);
+    float fragmentation_in_kb = (float)(fragmentation)/1024;
+    printf("Fragmentation = %fKB\n", fragmentation_in_kb);
 
     return 0;
 }
