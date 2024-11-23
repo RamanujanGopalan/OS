@@ -4,8 +4,7 @@
 #include <pthread.h>
 #include <cstring>
 #include <cstdlib>
-
-using namespace std;
+#include <ctime>
 
 struct oneD_thread_args {
   int low;
@@ -40,22 +39,27 @@ void* twoD_thread_function(void* ptr) {
 }
 
 void parallel_for(int low, int high, std::function<void(int)> &&lambda, int numThreads) {
+  clock_t start_time = clock();
   pthread_t tid[numThreads];
   oneD_thread_args args[numThreads];
   int chunk = (high - low) / numThreads;
   for (int i = 0; i < numThreads; i++) {
     args[i].low = low + chunk * i;
     if(i==numThreads-1){args[i].high=high;}
-    else{args[i].high = min(low + chunk * (i + 1), high);}
+    else{args[i].high = std::min(low + chunk * (i + 1), high);}
     args[i].lambda = lambda;
     pthread_create(&tid[i], nullptr, oneD_thread_function, &args[i]);
   }
   for (int i = 0; i < numThreads; i++) {
     pthread_join(tid[i], nullptr);
   }
+  clock_t end_time = clock();
+  double elapsed_time = double(end_time - start_time)/CLOCKS_PER_SEC;
+  printf("TIME ELAPSED %lf\n",elapsed_time);
 }
 
 void parallel_for(int low1, int high1, int low2, int high2, std::function<void(int, int)> &&lambda, int numThreads) {
+  clock_t start_time = clock();
   pthread_t tid[numThreads];
   twoD_thread_args args[numThreads];
   int chunk1 = (high1 - low1) / numThreads;
@@ -67,7 +71,7 @@ void parallel_for(int low1, int high1, int low2, int high2, std::function<void(i
       args[i].high2=high2;
     }
     else{
-      args[i].high1 = min(low1 + chunk1 * (i + 1), high1);
+      args[i].high1 = std::min(low1 + chunk1 * (i + 1), high1);
       args[i].high2 = high2;
     }
     args[i].low2 = low2;
@@ -77,4 +81,7 @@ void parallel_for(int low1, int high1, int low2, int high2, std::function<void(i
   for (int i = 0; i < numThreads; i++) {
     pthread_join(tid[i], nullptr);
   }
+  clock_t end_time = clock();
+  double elapsed_time = double(end_time - start_time)/CLOCKS_PER_SEC;
+  printf("TIME ELAPSED %lf\n",elapsed_time);
 }
